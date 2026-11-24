@@ -1,0 +1,14 @@
+version: 2.1
+
+jobs:
+  bootstrap:
+    docker:
+      - image: cimg/go:1.26
+    steps:
+      - checkout
+      - run: go version
+
+workflows:
+  bootstrap:
+    jobs:
+      - bootstrap
