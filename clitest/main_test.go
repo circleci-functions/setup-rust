@@ -79,12 +79,12 @@ func newJob(t *testing.T) *job {
 }
 
 // run runs setup-rust in the job's working directory, linking into the
-// sandbox's bin directory.
+// sandbox's bin directory and keeping its cache apart from other tests'.
 func (j *job) run(args ...string) (string, error) {
 	j.t.Helper()
 	env := j.sandbox.Env()
 	maps.Copy(env, j.env)
-	args = append(args, "--bin-dir", j.sandbox.BinDir)
+	args = append(args, "--bin-dir", j.sandbox.BinDir, "--cache-nonce", j.sandbox.CacheKeyNonce)
 	r := runner.New(j.t, binaryPath, runner.WithSandboxEnv(env), runner.WithCmdDir(j.wd))
 	_, err := r.Run(args...)
 	return r.StdoutString() + r.StderrString(), err

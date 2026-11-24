@@ -1,5 +1,6 @@
 // Command fakerustup stands in for rustup-init, rustup and rustup's proxies in
-// tests, telling them apart by the name it runs as. It records every call in
+// tests, telling them apart by the name it runs as. rustup run reports a
+// compiler whose commit hash is the toolchain name, hex encoded. It records every call in
 // $FAKERUSTUP_LOG, keeps the toolchains it "installs" as directories under
 // RUSTUP_HOME, and resolves the active toolchain the way rustup does: a
 // directory override, else a toolchain file, else the default.
@@ -55,23 +56,38 @@ func initRustup() {
 
 func rustup(args []string) int {
 	wd, _ := os.Getwd()
-	switch {
-	case len(args) > 0 && args[0] == "--version":
+	switch arg(args, 0) {
+	case "--version":
 		fmt.Println("rustup 1.28.2 (fake)")
-	case len(args) > 1 && args[0] == "toolchain" && args[1] == "install":
-		return toolchainInstall(wd, args[2:])
-	case len(args) > 1 && args[0] == "show" && args[1] == "active-toolchain":
-		name, ok := active(wd)
-		if !ok {
-			fmt.Fprintln(os.Stderr, "error: no active toolchain")
-			return 1
-		}
-		fmt.Println(name + " (fake)")
-	case len(args) > 2 && args[0] == "override" && args[1] == "set":
-		appendLine(filepath.Join(rustupHome(), "overrides"), wd+"\t"+args[2])
-	case len(args) > 1 && args[0] == "default":
-		writeFile(filepath.Join(rustupHome(), "default"), args[1])
+	case "toolchain":
+		return toolchainInstall(wd, args[min(2, len(args)):])
+	case "show":
+		return showActive(wd)
+	case "override":
+		appendLine(filepath.Join(rustupHome(), "overrides"), wd+"\t"+arg(args, 2))
+	case "default":
+		writeFile(filepath.Join(rustupHome(), "default"), arg(args, 1))
+	case "run":
+		fmt.Printf("rustc 1.0.0-fake\ncommit-hash: %x\ncommit-date: 2026-01-01\n", arg(args, 1))
 	}
+	return 0
+}
+
+// arg returns args[i], or "" when there are fewer.
+func arg(args []string, i int) string {
+	if i < len(args) {
+		return args[i]
+	}
+	return ""
+}
+
+func showActive(wd string) int {
+	name, ok := active(wd)
+	if !ok {
+		fmt.Fprintln(os.Stderr, "error: no active toolchain")
+		return 1
+	}
+	fmt.Println(name + " (fake)")
 	return 0
 }
 

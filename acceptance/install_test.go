@@ -140,3 +140,20 @@ func TestAcceptance_InstallsWhatTheToolchainFileNames(t *testing.T) {
 		assert.Assert(t, err != nil, "clippy is not in the file, so must not be installed; got: %s", got)
 	})
 }
+
+// TestAcceptance_CachesTheBuild checks the cache holds what a real build
+// writes: the next job restores it and cargo finds nothing to rebuild. It uses
+// the in-memory cache, since the save runs at the end of the job.
+func TestAcceptance_CachesTheBuild(t *testing.T) {
+	j := newJob(t, "hello")
+	args := []string{"--toolchain", acceptanceToolchain(), "--no-cache-bin", "--cache-nonce", j.sandbox.CacheKeyNonce}
+
+	j.run(args...)
+	j.mustLater("cargo build")
+	j.sandbox.Cache.EndJob(t)
+
+	assert.NilError(t, os.RemoveAll(filepath.Join(j.wd, "target")))
+	j.run(args...)
+	got := j.mustLater("cargo build -v")
+	assert.Assert(t, strings.Contains(got, "Fresh hello"), "expected the restored build to be up to date; got: %s", got)
+}
