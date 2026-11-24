@@ -86,6 +86,44 @@ its default.
 | `components` | | Components to add, comma separated, e.g. `rustfmt,clippy`. |
 | `override` | `true` | Make the toolchain the one used in `rust-src-dir`, with `rustup override set`. Ignored when it comes from a toolchain file. |
 | `rust-src-dir` | | Directory of the Rust project, where a toolchain file is read and the override is set. Empty is the working directory. |
+| `cache` | `true` | Use the job cache. `false` turns off every cache flag below. |
+| `cache-targets` | `true` | Include the target directory. |
+| `cache-bin` | `true` | Include `$CARGO_HOME/bin`, where `cargo install` puts binaries. |
+| `cache-on-failure` | `true` | Save the cache even when the job fails. |
+| `cache-save-if` | `true` | Save the cache at the end of the job. `false` only restores it. |
+| `cache-key` | | Added to the cache key, to keep apart jobs that would otherwise share a cache. |
+| `cache-shared-key` | | Used in the cache key in place of the job name, so several jobs share one cache. |
+
+## Caching
+
+setup-rust restores a cache as soon as the toolchain is installed, and saves
+it at the end of the job, so the steps in between need no `restore_cache` or
+`save_cache` of their own. It holds:
+
+- cargo's registry index, downloaded crates and git checkouts, under
+  `$CARGO_HOME`
+- the target directory in `rust-src-dir`, or `$CARGO_TARGET_DIR`, unless
+  `cache-targets` is `false`
+- `$CARGO_HOME/bin` and cargo's record of what it installed there, unless
+  `cache-bin` is `false`
+
+The key is made of the platform, the job name, `cache-key`, the compiler's
+commit, and a hash of every `Cargo.toml`, `Cargo.lock`, toolchain file and
+`.cargo/config.toml` under `rust-src-dir`. A job whose dependencies changed
+starts from the newest cache for the same compiler, and saves a new one at the
+end. Without a `Cargo.toml` there is nothing to cache, and the cache is
+skipped.
+
+CircleCI cache keys are written once, so a job whose key is already saved
+does not save again. Each job name gets its own cache. Set `cache-shared-key`
+on jobs that build the same way to have them share one:
+
+```yaml
+- setup-rust:
+    with:
+      components: clippy
+      cache-shared-key: rust
+```
 
 ## How it gets onto PATH
 
