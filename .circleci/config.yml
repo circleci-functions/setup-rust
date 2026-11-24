@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  toolkit: https://raw.githubusercontent.com/circleci-functions/toolkit/refs/heads/main/orbs/toolkit.yml
+
 parameters:
   rust-toolchain:
     type: string
@@ -175,3 +178,31 @@ workflows:
           platform: windows/amd64
           ext: ".exe"
           requires: [build]
+      - toolkit/release-pr:
+          name: release-pr
+          executor: go
+          cache-prefix: setup-rust-go
+          serial-group: << pipeline.project.slug >>/release-pr
+          requires: &release-requires
+            - test
+            - acceptance
+            - smoke-linux-amd64
+            - smoke-linux-arm64
+            - smoke-alpine
+            - smoke-rust
+            - smoke-macos
+            - smoke-windows
+          context: [github-release]
+          filters:
+            branches:
+              only: main
+      - toolkit/publish:
+          name: publish
+          executor: go
+          cache-prefix: setup-rust-go
+          serial-group: << pipeline.project.slug >>/publish
+          requires: *release-requires
+          context: [functions-publisher, github-release]
+          filters:
+            branches:
+              only: main

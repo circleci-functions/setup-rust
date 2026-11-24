@@ -125,3 +125,10 @@ tasks:
       - task: lint-tasks
       - task: test
       - task: dry-run
+
+  publish:
+    desc: Build and publish setup-rust to S3 (VERSION required)
+    requires:
+      vars: [VERSION]
+    cmds:
+      - go tool release --name setup-rust --version "{{.VERSION}}"
