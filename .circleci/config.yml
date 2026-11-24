@@ -1,14 +1,44 @@
 version: 2.1
 
-jobs:
-  bootstrap:
+executors:
+  go:
     docker:
       - image: cimg/go:1.26
+
+jobs:
+  test:
+    executor: go
     steps:
       - checkout
-      - run: go version
+      - restore_cache:
+          keys:
+            - setup-rust-go-{{ checksum "go.sum" }}-
+            - setup-rust-go-
+      - run: task lint
+      - run: task lint-tasks
+      - run: task lint-mod
+      - run: task test
+      - store_test_results:
+          path: test-results
+      - save_cache:
+          key: setup-rust-go-{{ checksum "go.sum" }}-{{ epoch }}
+          paths:
+            - ~/.cache/go-build
+            - ~/go/pkg/mod
+
+  # Cross-compiles setup-rust into ./dist, as publish will.
+  build:
+    executor: go
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - setup-rust-go-{{ checksum "go.sum" }}-
+            - setup-rust-go-
+      - run: task dry-run
 
 workflows:
-  bootstrap:
+  test-publish:
     jobs:
-      - bootstrap
+      - test
+      - build
